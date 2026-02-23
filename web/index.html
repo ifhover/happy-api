@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiro Token Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+  .header { padding: 20px 32px; border-bottom: 1px solid #1e2433; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+  .header .subtitle { font-size: 13px; color: #64748b; margin-top: 2px; }
+  .endpoints { display: flex; gap: 8px; flex-wrap: wrap; }
+  .endpoint-tag { font-size: 11px; background: #1e2433; padding: 5px 10px; border-radius: 5px; color: #94a3b8; font-family: monospace; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 32px; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .82; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-ghost { background: #1e2433; color: #94a3b8; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .card { background: #161b27; border: 1px solid #1e2433; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: #0f1117; border-radius: 8px; padding: 4px; width: fit-content; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #64748b; transition: all .15s; border: none; background: none; }
+  .tab.active { background: #1e2433; color: #e2e8f0; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: #64748b; font-weight: 500; }
+  input, select, textarea { background: #0f1117; border: 1px solid #1e2433; border-radius: 6px; padding: 8px 12px; color: #e2e8f0; font-size: 13px; width: 100%; outline: none; transition: border-color .15s; }
+  input:focus, select:focus, textarea:focus { border-color: #3b82f6; }
+  textarea { resize: vertical; font-family: monospace; font-size: 12px; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .hint { font-size: 11px; color: #475569; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid #1e2433; }
+  td { padding: 11px 12px; border-bottom: 1px solid #1a2030; font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1a2030; }
+  .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #052e16; color: #4ade80; }
+  .badge-red { background: #2d0a0a; color: #f87171; }
+  .badge-yellow { background: #2d1f00; color: #fbbf24; }
+  .badge-blue { background: #0c1a3d; color: #60a5fa; }
+  .quota-bar { width: 90px; height: 5px; background: #1e2433; border-radius: 3px; overflow: hidden; }
+  .quota-fill { height: 100%; background: #3b82f6; border-radius: 3px; }
+  .quota-fill.warn { background: #f59e0b; }
+  .quota-fill.danger { background: #ef4444; }
+  .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .empty { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #1e2433; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 18px; font-size: 13px; color: #e2e8f0; z-index: 1000; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; max-width: 360px; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: #ef4444; color: #f87171; }
+  .toast.success { border-color: #16a34a; color: #4ade80; }
+  .toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #1e2433; border-radius: 20px; cursor: pointer; transition: .2s; }
+  .slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #64748b; border-radius: 50%; transition: .2s; }
+  input:checked + .slider { background: #1d4ed8; }
+  input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .section-header h2 { font-size: 15px; font-weight: 600; }
+  .import-result { background: #0f1117; border: 1px solid #1e2433; border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 12px; font-family: monospace; color: #94a3b8; display: none; }
+  .import-result.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Kiro Token Manager</h1>
+    <div class="subtitle">管理 Kiro 账号 Token，对外提供 OpenAI / Claude 兼容 API</div>
+  </div>
+  <div class="endpoints">
+    <span class="endpoint-tag"><span style="color:#64748b;margin-right:5px">OpenAI</span><span id="ep-openai"></span></span>
+    <span class="endpoint-tag"><span style="color:#64748b;margin-right:5px">Claude</span><span id="ep-claude"></span></span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 添加 Token -->
+  <div class="card">
+    <div class="card-title">添加 Token</div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('manual')">手动填写</button>
+      <button class="tab" onclick="switchTab('json')">JSON 导入</button>
+      <button class="tab" onclick="switchTab('login')">在线登录</button>
+    </div>
+
+    <!-- 手动填写 -->
+    <div id="tab-manual">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>备注</label>
+          <input id="f-name" placeholder="账号备注（可选）">
+        </div>
+        <div class="form-group">
+          <label>认证方式</label>
+          <select id="f-method" onchange="onMethodChange()">
+            <option value="social">Social Auth（Google / GitHub）</option>
+            <option value="builder-id">Builder ID（IdC）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <input id="f-region" value="us-east-1">
+        </div>
+        <div class="form-group">
+          <label>Expires At（RFC3339）</label>
+          <input id="f-expires" placeholder="2025-12-31T00:00:00Z">
+        </div>
+        <div class="form-group full">
+          <label>Access Token</label>
+          <textarea id="f-access" rows="3" placeholder="eyJ..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Refresh Token</label>
+          <textarea id="f-refresh" rows="3" placeholder="eyJ..."></textarea>
+        </div>
+        <div class="form-group full" id="field-profile-arn">
+          <label>Profile ARN（Social Auth 必填）</label>
+          <input id="f-profile-arn" placeholder="arn:aws:codewhisperer:us-east-1:...">
+        </div>
+        <div class="form-group" id="field-client-id" style="display:none">
+          <label>Client ID</label>
+          <input id="f-client-id">
+        </div>
+        <div class="form-group" id="field-client-secret" style="display:none">
+          <label>Client Secret</label>
+          <input id="f-client-secret">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addToken()">添加</button>
+      </div>
+    </div>
+
+    <!-- JSON 导入 -->
+    <div id="tab-json" style="display:none">
+      <div class="form-group">
+        <label>粘贴 JSON（支持单个对象或数组，兼容 kiro-auth-token.json 格式）</label>
+        <textarea id="f-json" rows="10" placeholder='{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "profileArn": "arn:aws:...",
+  "authMethod": "social",
+  "region": "us-east-1",
+  "expiresAt": "2025-12-31T00:00:00Z"
+}
+
+// 或者数组格式：
+// [{ ... }, { ... }]'></textarea>
+        <div class="hint">字段名支持 camelCase（accessToken）和 snake_case（access_token）两种格式</div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>备注（可选，批量导入时自动加编号）</label>
+        <input id="f-json-name" placeholder="my-account">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-success" onclick="importJSON()">导入</button>
+      </div>
+      <div class="import-result" id="import-result"></div>
+    </div>
+
+    <!-- 在线登录 -->
+    <div id="tab-login" style="display:none">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>登录方式</label>
+          <select id="l-method" onchange="onLoginMethodChange()">
+            <option value="social-google">Social Auth — Google</option>
+            <option value="social-github">Social Auth — GitHub</option>
+            <option value="idc">Builder ID（IdC）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>备注（可选）</label>
+          <input id="l-name" placeholder="留空则自动生成">
+        </div>
+        <div class="form-group" id="l-region-group" style="display:none">
+          <label>Region</label>
+          <input id="l-region" value="us-east-1">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="startLogin()">开始登录</button>
+      </div>
+
+      <!-- 登录状态区域 -->
+      <div id="login-status" style="display:none;margin-top:16px">
+        <div style="background:#0f1117;border:1px solid #1e2433;border-radius:8px;padding:16px">
+          <!-- Social Auth：显示授权链接 -->
+          <div id="ls-social" style="display:none">
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:10px">点击下方链接在浏览器中完成授权，完成后 Token 将自动保存：</div>
+            <a id="ls-auth-url" href="#" target="_blank" style="color:#60a5fa;font-size:13px;word-break:break-all"></a>
+            <div style="margin-top:12px;font-size:12px;color:#475569">等待授权中 <span id="ls-dots">...</span></div>
+          </div>
+          <!-- IdC：显示 userCode -->
+          <div id="ls-idc" style="display:none">
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:10px">在浏览器中打开以下链接，并输入验证码：</div>
+            <a id="ls-verify-url" href="#" target="_blank" style="color:#60a5fa;font-size:13px;word-break:break-all"></a>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+              <span style="font-size:12px;color:#64748b">验证码：</span>
+              <span id="ls-user-code" style="font-size:20px;font-weight:700;letter-spacing:4px;color:#fff;font-family:monospace"></span>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#475569">等待授权中 <span id="ls-dots-idc">...</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token 列表 -->
+  <div class="card">
+    <div class="section-header">
+      <h2>Token 列表</h2>
+      <button class="btn btn-ghost btn-sm" onclick="loadTokens()">刷新</button>
+    </div>
+    <div id="token-table-wrap">
+      <div class="empty">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 系统配置 -->
+  <div class="card">
+    <div class="section-header">
+      <h2>系统配置</h2>
+      <span style="font-size:12px;color:#475569">修改后需重启服务才能生效（API Key、IP 白名单、最低配额立即生效）</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>监听地址</label>
+        <input id="cfg-host" placeholder="0.0.0.0">
+      </div>
+      <div class="form-group">
+        <label>端口</label>
+        <input id="cfg-port" placeholder="8080">
+      </div>
+      <div class="form-group">
+        <label>API Key（留空则不鉴权）</label>
+        <input id="cfg-apikey" type="password" placeholder="设置后调用 /v1/* 接口需携带此 Key">
+        <div class="hint" id="cfg-apikey-hint"></div>
+      </div>
+      <div class="form-group">
+        <label>最低可用配额</label>
+        <input id="cfg-minquota" type="number" min="0" placeholder="0（不限制）">
+        <div class="hint">剩余配额低于此值时跳过该 Token，0 表示不限制</div>
+      </div>
+      <div class="form-group full">
+        <label>IP 白名单（管理页面和 /api/* 接口，每行一个，支持 CIDR，留空不限制）</label>
+        <textarea id="cfg-ips" rows="4" placeholder="127.0.0.1&#10;192.168.1.0/24"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>代理地址（留空则使用系统代理）</label>
+        <input id="cfg-proxy" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080">
+        <div class="hint">支持 http、https、socks5 协议，修改后立即生效无需重启</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api/tokens';
+
+document.getElementById('ep-openai').textContent = `POST ${location.origin}/v1/chat/completions`;
+document.getElementById('ep-claude').textContent = `POST ${location.origin}/v1/messages`;
+
+// ── Tab 切换 ──────────────────────────────────────────────────
+
+function switchTab(name) {
+  document.getElementById('tab-manual').style.display = name === 'manual' ? '' : 'none';
+  document.getElementById('tab-json').style.display = name === 'json' ? '' : 'none';
+  document.getElementById('tab-login').style.display = name === 'login' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['manual','json','login'][i] === name);
+  });
+}
+
+function onMethodChange() {
+  const m = document.getElementById('f-method').value;
+  document.getElementById('field-profile-arn').style.display = m === 'social' ? '' : 'none';
+  document.getElementById('field-client-id').style.display = m === 'builder-id' ? '' : 'none';
+  document.getElementById('field-client-secret').style.display = m === 'builder-id' ? '' : 'none';
+}
+
+// ── 手动添加 ──────────────────────────────────────────────────
+
+async function addToken() {
+  const method = document.getElementById('f-method').value;
+  const body = {
+    name: document.getElementById('f-name').value.trim() || ('token-' + Date.now()),
+    auth_method: method,
+    access_token: document.getElementById('f-access').value.trim(),
+    refresh_token: document.getElementById('f-refresh').value.trim(),
+    region: document.getElementById('f-region').value.trim() || 'us-east-1',
+    expires_at: document.getElementById('f-expires').value.trim(),
+    profile_arn: document.getElementById('f-profile-arn').value.trim(),
+    client_id: document.getElementById('f-client-id').value.trim(),
+    client_secret: document.getElementById('f-client-secret').value.trim(),
+  };
+  if (!body.access_token || !body.refresh_token) {
+    toast('access_token 和 refresh_token 必填', true); return;
+  }
+  const r = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (r.ok) {
+    toast('添加成功', false, true);
+    ['f-name','f-access','f-refresh','f-expires','f-profile-arn','f-client-id','f-client-secret'].forEach(id => document.getElementById(id).value = '');
+    loadTokens();
+  } else {
+    const e = await r.json();
+    toast(e.error || '添加失败', true);
+  }
+}
+
+// ── JSON 导入 ─────────────────────────────────────────────────
+
+async function importJSON() {
+  const raw = document.getElementById('f-json').value.trim();
+  const namePrefix = document.getElementById('f-json-name').value.trim();
+
+  if (!raw) { toast('请粘贴 JSON 内容', true); return; }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    toast('JSON 格式错误: ' + e.message, true); return;
+  }
+
+  // 如果有名称前缀，注入到每个对象
+  const injectName = (obj, idx, total) => {
+    if (!namePrefix) return obj;
+    const name = total > 1 ? `${namePrefix}-${idx + 1}` : namePrefix;
+    // 同时支持两种字段名
+    if (obj.accessToken !== undefined) return { ...obj, name };
+    return { ...obj, name };
+  };
+
+  let payload;
+  if (Array.isArray(parsed)) {
+    payload = parsed.map((item, i) => injectName(item, i, parsed.length));
+  } else {
+    payload = injectName(parsed, 0, 1);
+  }
+
+  const r = await fetch(`${API}/import`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  const result = await r.json();
+  const resultEl = document.getElementById('import-result');
+  resultEl.classList.add('show');
+
+  if (r.ok) {
+    resultEl.textContent = `导入成功 ${result.imported} 个，ID: [${(result.ids || []).join(', ')}]` +
+      (result.errors?.length ? `\n错误:\n${result.errors.join('\n')}` : '');
+    toast(`成功导入 ${result.imported} 个 Token`, false, true);
+    document.getElementById('f-json').value = '';
+    loadTokens();
+  } else {
+    resultEl.textContent = result.error || '导入失败';
+    toast(result.error || '导入失败', true);
+  }
+}
+
+// ── 在线登录 ──────────────────────────────────────────────────
+
+function onLoginMethodChange() {
+  const m = document.getElementById('l-method').value;
+  document.getElementById('l-region-group').style.display = m === 'idc' ? '' : 'none';
+}
+
+let loginPollTimer = null;
+
+async function startLogin() {
+  const method = document.getElementById('l-method').value;
+  const name = document.getElementById('l-name').value.trim();
+
+  document.getElementById('login-status').style.display = '';
+  document.getElementById('ls-social').style.display = 'none';
+  document.getElementById('ls-idc').style.display = 'none';
+  if (loginPollTimer) { clearInterval(loginPollTimer); loginPollTimer = null; }
+
+  if (method === 'idc') {
+    const region = document.getElementById('l-region').value.trim() || 'us-east-1';
+    const r = await fetch('/api/login/idc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ region, name })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || '启动登录失败', true); return; }
+
+    document.getElementById('ls-idc').style.display = '';
+    const urlEl = document.getElementById('ls-verify-url');
+    urlEl.href = d.verification_url;
+    urlEl.textContent = d.verification_url;
+    document.getElementById('ls-user-code').textContent = d.user_code;
+
+    // 轮询等待 token 出现（每 5 秒刷新列表，检测新增）
+    startLoginPoll();
+  } else {
+    const provider = method === 'social-google' ? 'google' : 'github';
+    const r = await fetch('/api/login/social', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ provider, name })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || '启动登录失败', true); return; }
+
+    document.getElementById('ls-social').style.display = '';
+    const urlEl = document.getElementById('ls-auth-url');
+    urlEl.href = d.auth_url;
+    urlEl.textContent = d.auth_url;
+    // 自动打开浏览器
+    window.open(d.auth_url, '_blank');
+
+    startLoginPoll();
+  }
+}
+
+let _prevTokenCount = -1;
+function startLoginPoll() {
+  _prevTokenCount = -1;
+  // 先记录当前数量
+  fetch(API).then(r => r.json()).then(tokens => {
+    _prevTokenCount = (tokens || []).length;
+  });
+
+  let dots = 0;
+  loginPollTimer = setInterval(async () => {
+    dots = (dots + 1) % 4;
+    const d = '.'.repeat(dots + 1);
+    const el1 = document.getElementById('ls-dots');
+    const el2 = document.getElementById('ls-dots-idc');
+    if (el1) el1.textContent = d;
+    if (el2) el2.textContent = d;
+
+    const r = await fetch(API);
+    const tokens = await r.json();
+    const count = (tokens || []).length;
+    if (_prevTokenCount >= 0 && count > _prevTokenCount) {
+      clearInterval(loginPollTimer);
+      loginPollTimer = null;
+      document.getElementById('login-status').style.display = 'none';
+      toast('登录成功，Token 已自动保存', false, true);
+      loadTokens();
+    }
+  }, 3000);
+}
+
+// ── Token 列表 ────────────────────────────────────────────────
+
+async function loadTokens() {
+  const r = await fetch(API);
+  const tokens = await r.json();
+  const wrap = document.getElementById('token-table-wrap');
+  if (!tokens || tokens.length === 0) {
+    wrap.innerHTML = '<div class="empty">暂无 Token，请先添加</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>名称</th><th>认证方式</th><th>状态</th><th>配额</th>
+        <th>过期时间</th><th>最后使用</th><th>操作</th>
+      </tr></thead>
+      <tbody>${tokens.map(renderRow).join('')}</tbody>
+    </table>`;
+}
+
+function renderRow(t) {
+  const expired = t.is_expired;
+  const statusBadge = !t.enabled
+    ? '<span class="badge badge-red">禁用</span>'
+    : expired
+      ? '<span class="badge badge-yellow">已过期</span>'
+      : '<span class="badge badge-green">正常</span>';
+
+  const methodBadge = t.auth_method === 'social'
+    ? '<span class="badge badge-blue">Social</span>'
+    : '<span class="badge badge-blue">IdC</span>';
+
+  let quotaHtml = '<span style="color:#475569;font-size:12px">未检测</span>';
+  if (t.quota_total > 0) {
+    const pct = Math.min(100, Math.round(t.quota_used / t.quota_total * 100));
+    const cls = pct > 90 ? 'danger' : pct > 70 ? 'warn' : '';
+    quotaHtml = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="quota-bar"><div class="quota-fill ${cls}" style="width:${pct}%"></div></div>
+        <span style="font-size:11px;color:#94a3b8">${t.quota_used}/${t.quota_total}</span>
+      </div>`;
+  }
+
+  const fmt = d => new Date(d).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const expiresAt = fmt(t.expires_at);
+  const lastUsed = t.last_used_at ? fmt(t.last_used_at) : '—';
+
+  return `<tr>
+    <td><strong>${esc(t.name)}</strong><br><span style="font-size:11px;color:#475569">#${t.id}</span></td>
+    <td>${methodBadge}</td>
+    <td style="display:flex;align-items:center;gap:8px;padding-top:14px">
+      ${statusBadge}
+      <label class="toggle">
+        <input type="checkbox" ${t.enabled ? 'checked' : ''} onchange="toggleEnabled(${t.id}, this.checked)">
+        <span class="slider"></span>
+      </label>
+    </td>
+    <td>${quotaHtml}</td>
+    <td style="font-size:12px;color:${expired?'#f87171':'#94a3b8'}">${expiresAt}</td>
+    <td style="font-size:12px;color:#64748b">${lastUsed}</td>
+    <td>
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick="doRefresh(${t.id})">刷新</button>
+        <button class="btn btn-ghost btn-sm" onclick="doCheckQuota(${t.id})">配额</button>
+        <button class="btn btn-danger btn-sm" onclick="doDelete(${t.id})">删除</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+async function toggleEnabled(id, enabled) {
+  await fetch(`${API}/${id}/enabled`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({enabled}) });
+  toast(enabled ? '已启用' : '已禁用');
+}
+
+async function doRefresh(id) {
+  toast('刷新中...');
+  const r = await fetch(`${API}/${id}/refresh`, { method: 'POST' });
+  if (r.ok) {
+    const d = await r.json();
+    toast('刷新成功，过期: ' + new Date(d.expires_at).toLocaleString(), false, true);
+    loadTokens();
+  } else {
+    const e = await r.json();
+    toast(e.error || '刷新失败', true);
+  }
+}
+
+async function doCheckQuota(id) {
+  toast('查询中...');
+  const r = await fetch(`${API}/${id}/check-quota`, { method: 'POST' });
+  if (r.ok) {
+    const d = await r.json();
+    toast(`配额: ${d.used}/${d.total}，剩余 ${d.remaining}`, false, true);
+    loadTokens();
+  } else {
+    const e = await r.json();
+    toast(e.error || '查询失败', true);
+  }
+}
+
+async function doDelete(id) {
+  if (!confirm('确认删除该 Token？')) return;
+  await fetch(`${API}/${id}`, { method: 'DELETE' });
+  toast('已删除');
+  loadTokens();
+}
+
+// ── 工具函数 ──────────────────────────────────────────────────
+
+function toast(msg, isError = false, isSuccess = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : isSuccess ? ' success' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 3500);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 配置管理 ──────────────────────────────────────────────────
+
+async function loadConfig() {
+  const r = await fetch('/api/config');
+  if (!r.ok) return;
+  const d = await r.json();
+  document.getElementById('cfg-host').value = d.host || '';
+  document.getElementById('cfg-port').value = d.port || '';
+  document.getElementById('cfg-apikey').placeholder = d.api_key_set ? '已设置（留空保持不变，输入新值覆盖）' : '留空则不鉴权';
+  document.getElementById('cfg-apikey-hint').textContent = d.api_key_set ? '当前已设置 API Key' : '当前未设置 API Key';
+  document.getElementById('cfg-minquota').value = d.min_quota_remaining || 0;
+  document.getElementById('cfg-ips').value = (d.allowed_ips || []).join('\n');
+  document.getElementById('cfg-proxy').value = d.proxy_url || '';
+}
+
+async function saveConfig() {
+  const host = document.getElementById('cfg-host').value.trim();
+  const port = document.getElementById('cfg-port').value.trim();
+  const apikeyVal = document.getElementById('cfg-apikey').value;
+  const minQuota = parseInt(document.getElementById('cfg-minquota').value) || 0;
+  const ipsRaw = document.getElementById('cfg-ips').value.trim();
+  const allowedIPs = ipsRaw ? ipsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const proxyURL = document.getElementById('cfg-proxy').value.trim();
+
+  const body = { host, port, allowed_ips: allowedIPs, min_quota_remaining: minQuota, proxy_url: proxyURL };
+  if (apikeyVal !== '') body.api_key = apikeyVal;
+
+  const r = await fetch('/api/config', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (r.ok) {
+    toast(d.message || '保存成功', false, true);
+    document.getElementById('cfg-apikey').value = '';
+    loadConfig();
+  } else {
+    toast(d.error || '保存失败', true);
+  }
+}
+
+loadTokens();
+loadConfig();
+</script>
+</body>
+</html>
