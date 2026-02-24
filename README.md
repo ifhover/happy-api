@@ -13,7 +13,7 @@
 
 ## 下载
 
-前往 [Releases](../../releases) 页面下载对应平台的二进制文件：
+前往 [Releases](https://github.com/ifhover/happy-api/releases) 页面下载对应平台的二进制文件：
 
 | 平台 | 文件名 |
 |------|--------|
@@ -115,7 +115,7 @@ curl http://localhost:8080/v1/messages \
 需要 Go 1.21+：
 
 ```bash
-git clone https://github.com/你的用户名/kiro-api-proxy.git
-cd kiro-api-proxy
+git clone https://github.com/ifhover/happy-api.git
+cd happy-api
 go build -o kiro-api-proxy .
 ```
