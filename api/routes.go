@@ -7,12 +7,12 @@ import (
 	"kiro-api-proxy/config"
 )
 
-func SetupRoutes(r *gin.Engine, apiKey string) {
+func SetupRoutes(r *gin.Engine, apiKey string, index []byte) {
 	// 管理接口：受 IP 白名单保护
 	admin := r.Group("/")
 	admin.Use(ipWhitelistMiddleware())
 	{
-		admin.GET("/", func(c *gin.Context) { c.File("./web/index.html") })
+		admin.GET("/", func(c *gin.Context) { c.Data(http.StatusOK, "text/html; charset=utf-8", index) })
 
 		admin.GET("/api/config", getConfig)
 		admin.PUT("/api/config", updateConfig)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"log"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 	"kiro-api-proxy/db"
 	"kiro-api-proxy/kiro"
 )
+
+//go:embed web/index.html
+var indexHTML []byte
 
 func main() {
 	if err := config.Load(); err != nil {
@@ -34,7 +38,7 @@ func main() {
 	kiro.StartAutoRefresh(10 * time.Minute)
 
 	r := gin.Default()
-	api.SetupRoutes(r, cfg.APIKey)
+	api.SetupRoutes(r, cfg.APIKey, indexHTML)
 
 	addr := cfg.Host + ":" + cfg.Port
 	log.Printf("Kiro API Proxy listening on %s", addr)
