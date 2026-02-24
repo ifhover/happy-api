@@ -242,7 +242,9 @@ func IdCLoginStart(region string) (verificationURL, userCode string, result <-ch
 		"clientSecret": reg.ClientSecret,
 		"startUrl":     builderIDStartURL,
 	})
-	authResp, err := doPost(oidcBase+"/device_authorization", authBody, nil, refreshClient)
+	authResp, err := doPost(oidcBase+"/device_authorization", authBody, map[string]string{
+		"User-Agent": "KiroIDE/" + kiroVersion,
+	}, refreshClient)
 	if err != nil {
 		return "", "", nil, nil, nil, fmt.Errorf("device authorization: %w", err)
 	}

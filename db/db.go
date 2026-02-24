@@ -36,6 +36,10 @@ func Init(path string) error {
 	if err != nil {
 		return err
 	}
+	// 开启 WAL 模式，避免并发读写时 "database is locked" 错误
+	if _, err := DB.Exec(`PRAGMA journal_mode=WAL`); err != nil {
+		return err
+	}
 	return migrate()
 }
 

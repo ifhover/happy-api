@@ -137,6 +137,7 @@ func listTokens(c *gin.Context) {
 	tokens, err := db.ListTokens()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	result := make([]safeToken, 0, len(tokens))
 	for _, t := range tokens {
