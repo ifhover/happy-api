@@ -20,8 +20,8 @@ import (
 const (
 	kiroVersion   = "0.8.140"
 	defaultRegion = "us-east-1"
-	apiEndpoint   = "https://q.%s.amazonaws.com/generateAssistantResponse"
-	quotaEndpoint = "https://q.%s.amazonaws.com/getUsageLimits?isEmailRequired=true&origin=AI_EDITOR&resourceType=AGENTIC_REQUEST"
+	apiEndpoint   = "https://q.us-east-1.amazonaws.com/generateAssistantResponse"
+	quotaEndpoint = "https://q.us-east-1.amazonaws.com/getUsageLimits?isEmailRequired=true&origin=AI_EDITOR&resourceType=AGENTIC_REQUEST"
 	socialRefresh = "https://prod.%s.auth.desktop.kiro.dev/refreshToken"
 	idcRefresh    = "https://oidc.%s.amazonaws.com/token"
 )
@@ -228,12 +228,7 @@ func CheckQuota(t *db.Token) (*QuotaInfo, error) {
 		return nil, err
 	}
 
-	region := t.Region
-	if region == "" {
-		region = defaultRegion
-	}
-
-	url := fmt.Sprintf(quotaEndpoint, region)
+	url := quotaEndpoint
 	if t.AuthMethod == "social" && t.ProfileArn != "" {
 		url += "&profileArn=" + t.ProfileArn
 	}
@@ -975,7 +970,10 @@ func buildKiroRequestFromClaude(req ClaudeRequest, profileArn, authMethod string
 	messages := mergeAdjacentMessages(req.Messages)
 
 	// 3. 构建工具列表
-	kiroTools := buildKiroTools(req.Tools)
+	var kiroTools []map[string]any
+	if len(req.Tools) > 0 && len(req.Tools) <= 20 {
+		kiroTools = buildKiroTools(req.Tools)
+	}
 
 	// 4. 构建 history
 	history := []map[string]any{}
@@ -1085,7 +1083,7 @@ func buildKiroRequestFromClaude(req ClaudeRequest, profileArn, authMethod string
 		},
 	}
 	if len(history) > 0 {
-		kiroReq["conversationState"].(map[string]any)["history"] = history
+		kiroReq["conversationState"].(map[string]any)["history"] = ensureAlternatingHistory(history)
 	}
 	if authMethod == "social" && profileArn != "" {
 		kiroReq["profileArn"] = profileArn
@@ -1093,6 +1091,7 @@ func buildKiroRequestFromClaude(req ClaudeRequest, profileArn, authMethod string
 
 	return json.Marshal(kiroReq)
 }
+
 // buildUserInputMessage 从 user content 构建 userInputMessage 和 context（用于 history）
 func buildUserInputMessage(content interface{}, modelID string) (map[string]any, map[string]any) {
 	text, toolResults, _ := extractUserParts(content)
@@ -1225,11 +1224,12 @@ func deduplicateToolResults(results []map[string]any) []map[string]any {
 
 // callKiroAPI 发起请求并返回原始 Response，调用方负责关闭 Body
 func callKiroAPI(t *db.Token, body []byte) (*http.Response, error) {
-	region := t.Region
-	if region == "" {
-		region = defaultRegion
+	bodyStr := string(body)
+	if len(bodyStr) > 4000 {
+		bodyStr = bodyStr[:4000]
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf(apiEndpoint, region), bytes.NewReader(body))
+	fmt.Printf("[KIRO-DEBUG] Request body: %s\n", bodyStr)
+	req, err := http.NewRequest("POST", apiEndpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -1247,9 +1247,9 @@ type kiroEvent struct {
 		Input     string
 		Stop      bool
 	}
-	Input              string  // type=toolUseInput
-	Stop               bool    // type=toolUseStop
-	ContextUsagePct    float64 // type=contextUsage
+	Input           string  // type=toolUseInput
+	Stop            bool    // type=toolUseStop
+	ContextUsagePct float64 // type=contextUsage
 }
 
 // parseKiroEventStreamBuffer 从缓冲区中解析所有完整的 JSON 事件，返回事件列表和剩余未处理数据
@@ -1676,12 +1676,7 @@ func doPost(url string, body []byte, extraHeaders map[string]string, client *htt
 // ValidateToken 验证 token 是否有效，通过调用配额接口来确认
 // 返回 nil 表示有效，否则返回错误原因
 func ValidateToken(t *db.Token) error {
-	region := t.Region
-	if region == "" {
-		region = defaultRegion
-	}
-
-	url := fmt.Sprintf(quotaEndpoint, region)
+	url := quotaEndpoint
 	if t.AuthMethod == "social" && t.ProfileArn != "" {
 		url += "&profileArn=" + t.ProfileArn
 	}
